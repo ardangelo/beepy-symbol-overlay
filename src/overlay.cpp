@@ -1,12 +1,10 @@
 #include <stdio.h>
+#include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
+#include <limits.h>
 #include <sys/ioctl.h>
 
-#include <unistd.h>
-
-#include <string>
-#include <memory>
 #include <stdexcept>
 
 #include <libdrm/drm.h>
@@ -14,9 +12,9 @@
 
 #include "ioctl_iface.h"
 
-using namespace std::literals;
+#include "overlay.hpp"
 
-static auto const default_keymap_path = "/usr/share/kbd/keymaps/beepy-kbd.map";
+using namespace std::literals;
 
 static auto overlay_add(int fd, sharp_overlay_t overlay)
 {
@@ -60,42 +58,74 @@ static void overlay_hide(int fd, void* display)
 	}
 }
 
-int main(int argc, char** argv)
+SharpSession::SharpSession(char const* sharp_dev)
+	: m_fd{::open(sharp_dev, O_RDWR)}
 {
-	// Check arguments
-	if ((argc != 2) && (argc != 3)) {
-		fprintf(stderr, "usage: %s sharp_dev [keymap_path]\n");
-		return 1;
-	}
-
-	// Get arguments
-	auto sharp_dev = argv[1];
-	auto keymap_path = (argc > 2)
-		? argv[2]
-		: default_keymap_path;
-
-	unsigned char const pix[] =
-		{ 0x00, 0xff, 0x00, 0xff, 0x00, 0xff, 0x00, 0xff
-		, 0xff, 0x00, 0xff, 0x00, 0xff, 0x00, 0xff, 0x00
-		, 0x00, 0xff, 0x00, 0xff, 0x00, 0xff, 0x00, 0xff
-		, 0xff, 0x00, 0xff, 0x00, 0xff, 0x00, 0xff, 0x00
-		, 0x00, 0xff, 0x00, 0xff, 0x00, 0xff, 0x00, 0xff
-		, 0xff, 0x00, 0xff, 0x00, 0xff, 0x00, 0xff, 0x00
-		, 0x00, 0xff, 0x00, 0xff, 0x00, 0xff, 0x00, 0xff
-		, 0xff, 0x00, 0xff, 0x00, 0xff, 0x00, 0xff, 0x00
-	};
-	auto overlay = sharp_overlay_t { .x = 20, .y = 20, .width = 8, .height = 8,
-		.pixels = pix };
-	auto fd = ::open(sharp_dev, O_RDWR);
-	if (fd < 0) {
-		throw std::runtime_error("open "s + sharp_dev + " failed: "s
+	if (m_fd < 0) {
+		throw std::runtime_error("failed to open "s + sharp_dev + ": "
 			+ ::strerror(errno));
 	}
-	auto storage = overlay_add(fd, overlay);
-	auto display = overlay_show(fd, storage);
-	sleep(5);
-	overlay_hide(fd, display);
-	overlay_remove(fd, storage);
+}
 
-	return 0;
+SharpSession::SharpSession(SharpSession&& expiring)
+	: m_fd{expiring.m_fd}
+{
+	expiring.m_fd = -1;
+}
+
+SharpSession::~SharpSession()
+{
+	if (m_fd >= 0) {
+		::close(m_fd);
+		m_fd = -1;
+	}
+}
+
+int SharpSession::get()
+{
+	return m_fd;
+}
+
+Overlay::Overlay(SharpSession& session,
+	int x, int y, int width, int height, unsigned char const* pix)
+	: m_session{session}
+	, m_storage{overlay_add(session.get(), sharp_overlay_t {
+		.x = x, .y = y, .width = width, .height = height, .pixels = pix } )}
+	, m_display{}
+{}
+
+Overlay::Overlay(Overlay&& expiring)
+	: m_session{expiring.m_session}
+	, m_storage{expiring.m_storage}
+	, m_display{expiring.m_display}
+{
+	expiring.m_storage = nullptr;
+	expiring.m_display = nullptr;
+}
+
+Overlay::~Overlay()
+{
+	if (m_display != nullptr) {
+		hide();
+	}
+
+	if (m_storage != nullptr) {
+		overlay_remove(m_session.get(), m_storage);
+		m_storage = nullptr;
+	}
+}
+
+void Overlay::show()
+{
+	if (m_display == nullptr) {
+		m_display = overlay_show(m_session.get(), m_storage);
+	}
+}
+
+void Overlay::hide()
+{
+	if (m_display != nullptr) {
+		overlay_hide(m_session.get(), m_display);
+		m_display = nullptr;
+	}
 }

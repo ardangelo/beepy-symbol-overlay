@@ -5,11 +5,14 @@ CXXFLAGS := -g -O2 -std=c++17 $(CXXFLAGS)
 
 all: symbol-overlay
 
-%.o: %.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+%.psf: %.psf.gz
+	gunzip -k $^
 
-symbol-overlay: src/symbol-overlay.o
-	$(CXX) $< -o $@
+%.o: %.cpp
+	$(CXX) $(CXXFLAGS) -c $^ -o $@
+
+symbol-overlay: src/main.o src/overlay.o src/psf.o
+	$(CXX) $^ -o $@
 
 clean:
 	rm -f src/*.o symbol-overlay
