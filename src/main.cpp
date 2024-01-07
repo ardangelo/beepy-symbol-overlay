@@ -26,7 +26,7 @@ int main(int argc, char** argv)
 		: default_keymap_path;
 
 	unsigned char pix[20 * 20] = {};
-	draw_psf1_character("Uni1-VGA16.psf", 0xAE, pix, 20);
+	draw_psf1_character("Uni1-VGA16.psf", 0xAE, pix, 20, 20, 0, 0);
 
 	auto session = SharpSession{sharp_dev};
 	auto overlay = Overlay{session, 10, 10, 20, 20, pix};

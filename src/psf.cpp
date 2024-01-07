@@ -9,6 +9,7 @@
 using namespace std::literals;
 
 static constexpr auto psf1_magic = 0x0436;
+static constexpr auto psf1_charwidth = 8;
 
 struct psf1_header
 {
@@ -18,7 +19,7 @@ struct psf1_header
 };
 
 void draw_psf1_character(char const *psf_path, char c,
-	unsigned char *buf, int width)
+	unsigned char *buf, int buf_width, int buf_height, int x, int y)
 {
 	// Check character
 	if ((c < 0) || (c >= 256)) {
@@ -46,14 +47,33 @@ void draw_psf1_character(char const *psf_path, char c,
 	unsigned char glyph[header.charsize];
 	::fread(glyph, header.charsize, 1, file.get());
 
+	// Starting coordinates
+	y = (y < 0) ? buf_height + y : y;
+	if (y >= buf_height) {
+		return;
+	}
+	x = (x < 0) ? buf_width + x : x;
+	if (x >= buf_width) {
+		return;
+	}
+
 	// Draw character
-	auto *ptr = buf;
-	for (int row = 0; row < header.charsize; row++) {
-		for (int col = 0; col < 8; col++) {
-			auto pixel = (glyph[row] >> (7 - col)) & 1;
-			*ptr++ = (pixel ? 0xFF : 0x00);
+	for (int sy = 0; sy < header.charsize; sy++) {
+
+		auto dy = y + sy;
+		if (dy >= buf_height) {
+			break;
 		}
 
-		ptr += (width - 8);
+		for (int sx = 0; sx < psf1_charwidth; sx++) {
+
+			auto dx = x + sx;
+			if (dx >= buf_width) {
+				break;
+			}
+
+			auto pixel = (glyph[sy] >> (7 - sx)) & 1;
+			buf[dy * buf_width + dx] = (pixel ? 0xFF : 0x00);
+		}
 	}
 }
