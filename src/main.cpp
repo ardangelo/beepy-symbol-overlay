@@ -21,7 +21,38 @@ static auto const default_keymap_path = "/usr/share/kbd/keymaps/beepy-kbd.map";
 static auto const default_psf_path = "Uni1-VGA16.psf";
 
 static const auto symkey_rows = std::vector<std::pair<int, int>>
-	{ {16, 25}, {30, 38}, {44, 50} };
+{ {16, 25}, {30, 38}, {43, 50} };
+static const auto alphaUtf16Table = std::unordered_map<int, uint16_t>
+{ {16, 'Q'}
+, {17, 'W'}
+, {18, 'E'}
+, {19, 'R'}
+, {20, 'T'}
+, {21, 'Y'}
+, {22, 'U'}
+, {23, 'I'}
+, {24, 'O'}
+, {25, 'P'}
+
+, {30, 'A'}
+, {31, 'S'}
+, {32, 'D'}
+, {33, 'F'}
+, {34, 'G'}
+, {35, 'H'}
+, {36, 'J'}
+, {37, 'K'}
+, {38, 'L'}
+
+, {44, 'Z'}
+, {45, 'X'}
+, {46, 'C'}
+, {47, 'V'}
+, {48, 'B'}
+, {49, 'N'}
+, {50, 'M'}
+, {113, '$'}
+};
 
 // Convert X keymap into map from keycode to x11name
 static auto parse_keymap(char const* keymap_path)
@@ -96,56 +127,52 @@ int main(int argc, char** argv)
 	// Parse keymap
 	auto keycodeX11names = parse_keymap(keymap_path);
 
-	// Generate UTF16 -> font index map from font
-	auto utf16Psfindices = gen_psf1_utf16_table(default_psf_path);
+	// Open PSF renderer
+	auto psf = PSF{default_psf_path};
 
 	// Render table
-	auto max_rows = 3;
-	auto max_cols = 10;
-	unsigned char pix[(3 * 16) * (10 * 8)] = {};
+	auto symkey_cols = [](std::vector<std::pair<int, int>> const& symkey_rows) {
+		auto max = 0;
+		for (auto const& [lo, hi] : symkey_rows) {
+			auto width = hi - lo + 1;
+			if (width > max) { max = width; }
+		}
+		return max;
+	}(symkey_rows);
+	auto pix_height = 2 * symkey_rows.size() * psf.getHeight();
+	auto pix_width = 4 * symkey_cols * psf.getWidth();
+	unsigned char pix[pix_width * pix_height];
+	::memset(pix, 0/*0xff*/, pix_width * pix_height);
 	for (size_t row = 0; row < symkey_rows.size(); row++) {
 		for (auto symkey = symkey_rows[row].first;
 			symkey <= symkey_rows[row].second; symkey++) {
 
 			auto keycodeX11name = keycodeX11names.find(symkey);
 			if (keycodeX11name == keycodeX11names.end()) {
-printf("skip no name for keycode %d\n", symkey);
 				continue;
 			}
 
-			auto utf16 = x11name_to_utf16(keycodeX11name->second);
-			if (utf16 == 0x0) {
-printf("skip no utf16 for %s\n", keycodeX11name->second.c_str());
+			auto alphaUtf16 = alphaUtf16Table.find(symkey);
+			if (alphaUtf16 == alphaUtf16Table.end()) {
 				continue;
 			}
 
-			auto utf16Psfidx = utf16Psfindices.find(utf16);
-			if (utf16Psfidx == utf16Psfindices.end()) {
-printf("skip no index for utf16 %x\n", utf16);
+			auto sym_utf16 = x11name_to_utf16(keycodeX11name->second);
+			if (sym_utf16 == 0x0) {
 				continue;
 			}
 
-			auto psf_idx = utf16Psfidx->second;
-			auto x = (symkey - symkey_rows[row].first) * 8;
-			auto y = row * 16;
-printf("Draw %s idx %x at %d %d\n", keycodeX11name->second.c_str(), psf_idx, x, y);
-			draw_psf1_character(default_psf_path, psf_idx, pix,
-				10 * 8, 3 * 16, x, y);
+			auto x = 2 * (symkey - symkey_rows[row].first) * psf.getWidth();
+			auto y = row * psf.getHeight();
+			psf.drawUtf16(alphaUtf16->second,
+				pix, pix_width, pix_height, x, y);
+			psf.drawUtf16(sym_utf16,
+				pix, pix_width, pix_height, x + psf.getWidth(), y);
 		}
 	}
 
-/*
-	for (int i = 0; i < 3 * 10; i++) {
-		for (int j = 0; j < 10 * 8; j++) {
-			auto p = pix[(i * 10 * 8) + j];
-			printf(p ? "#" : " ");
-		}
-		printf("\n");
-	}
-	printf("\n");
-*/
 	auto session = SharpSession{sharp_dev};
-	auto overlay = Overlay{session, 0, 0, 10 * 8, 3 * 16, pix};
+	auto overlay = Overlay{session, 0, 0, pix_width, pix_height, pix};
 
 	overlay.show();
 	char c;
