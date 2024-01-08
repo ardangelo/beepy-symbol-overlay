@@ -1,5 +1,5 @@
 CXX ?= g++
-CXXFLAGS := -g -O2 -std=c++17 $(CXXFLAGS)
+CXXFLAGS := -O2 -std=c++17 $(CXXFLAGS)
 
 .PHONY: clean
 
@@ -11,7 +11,7 @@ all: symbol-overlay
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $^ -o $@
 
-symbol-overlay: src/main.o src/overlay.o src/psf.o
+symbol-overlay: src/main.o src/overlay.o src/psf.o src/x11name_to_utf16.o
 	$(CXX) $^ -o $@
 
 clean:
