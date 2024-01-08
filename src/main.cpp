@@ -23,35 +23,12 @@ static auto const default_psf_path = "Uni1-VGA16.psf";
 static const auto symkey_rows = std::vector<std::pair<int, int>>
 { {16, 25}, {30, 38}, {43, 50} };
 static const auto alphaUtf16Table = std::unordered_map<int, uint16_t>
-{ {16, 'Q'}
-, {17, 'W'}
-, {18, 'E'}
-, {19, 'R'}
-, {20, 'T'}
-, {21, 'Y'}
-, {22, 'U'}
-, {23, 'I'}
-, {24, 'O'}
-, {25, 'P'}
-
-, {30, 'A'}
-, {31, 'S'}
-, {32, 'D'}
-, {33, 'F'}
-, {34, 'G'}
-, {35, 'H'}
-, {36, 'J'}
-, {37, 'K'}
-, {38, 'L'}
-
-, {44, 'Z'}
-, {45, 'X'}
-, {46, 'C'}
-, {47, 'V'}
-, {48, 'B'}
-, {49, 'N'}
-, {50, 'M'}
-, {113, '$'}
+{ {16, 'Q'}, {17, 'W'}, {18, 'E'}, {19, 'R'}, {20, 'T'}, {21, 'Y'}
+, {22, 'U'}, {23, 'I'}, {24, 'O'}, {25, 'P'}
+, {30, 'A'}, {31, 'S'}, {32, 'D'}, {33, 'F'}, {34, 'G'}, {35, 'H'}
+, {36, 'J'}, {37, 'K'}, {38, 'L'}
+, {44, 'Z'}, {45, 'X'}, {46, 'C'}, {47, 'V'}, {48, 'B'}, {49, 'N'}
+, {50, 'M'}, {113, '$'}
 };
 
 // Convert X keymap into map from keycode to x11name
@@ -139,40 +116,59 @@ int main(int argc, char** argv)
 		}
 		return max;
 	}(symkey_rows);
-	auto pix_height = 2 * symkey_rows.size() * psf.getHeight();
-	auto pix_width = 4 * symkey_cols * psf.getWidth();
+	auto cell_height = 5 + 2 * psf.getHeight();
+	auto cell_width = 40;
+	auto pix_height = 3 * cell_height;
+	auto pix_width = 10 * cell_width;
 	unsigned char pix[pix_width * pix_height];
-	::memset(pix, 0/*0xff*/, pix_width * pix_height);
-	for (size_t row = 0; row < symkey_rows.size(); row++) {
-		for (auto symkey = symkey_rows[row].first;
-			symkey <= symkey_rows[row].second; symkey++) {
+	::memset(pix, 0xff, pix_width * pix_height);
+	for (size_t row = 0; row < 3; row++) {
+		auto const& [sk_lo, sk_hi] = symkey_rows[row];
 
-			auto keycodeX11name = keycodeX11names.find(symkey);
-			if (keycodeX11name == keycodeX11names.end()) {
-				continue;
+		for (int x = 0; x < pix_width; x++) {
+			pix[(row * cell_height) * pix_width + x] = 0x0;
+			pix[(row * cell_height + 1) * pix_width + x] = 0x0;
+			pix[(row * cell_height + cell_height - 2) * pix_width + x] = 0x0;
+			pix[(row * cell_height + cell_height - 1) * pix_width + x] = 0x0;
+		}
+
+		for (size_t col = 0; col < 10; col++) {
+			for (int y = 0; y < cell_height; y++) {
+				pix[(row * cell_height + y) * pix_width + (col * cell_width)] = 0x0;
 			}
 
-			auto alphaUtf16 = alphaUtf16Table.find(symkey);
-			if (alphaUtf16 == alphaUtf16Table.end()) {
-				continue;
-			}
+			if (col <= (sk_hi - sk_lo)) {
+				auto symkey = sk_lo + col;
 
-			auto sym_utf16 = x11name_to_utf16(keycodeX11name->second);
-			if (sym_utf16 == 0x0) {
-				continue;
-			}
+				auto keycodeX11name = keycodeX11names.find(symkey);
+				if (keycodeX11name == keycodeX11names.end()) {
+					continue;
+				}
 
-			auto x = 2 * (symkey - symkey_rows[row].first) * psf.getWidth();
-			auto y = row * psf.getHeight();
-			psf.drawUtf16(alphaUtf16->second,
-				pix, pix_width, pix_height, x, y);
-			psf.drawUtf16(sym_utf16,
-				pix, pix_width, pix_height, x + psf.getWidth(), y);
+				auto alphaUtf16 = alphaUtf16Table.find(symkey);
+				if (alphaUtf16 == alphaUtf16Table.end()) {
+					continue;
+				}
+
+				auto sym_utf16 = x11name_to_utf16(keycodeX11name->second);
+				if (sym_utf16 == 0x0) {
+					continue;
+				}
+
+				auto x = col * cell_width + 1;
+				auto y = row * cell_height + 3;
+				psf.drawUtf16(sym_utf16,
+					pix, pix_width, pix_height, x + 12, y, 2);
+				psf.drawUtf16(alphaUtf16->second,
+					pix, pix_width, pix_height,
+					(col < 5) ? x + 2 : x + 30, y + 2, 1);
+			}
 		}
 	}
 
 	auto session = SharpSession{sharp_dev};
-	auto overlay = Overlay{session, 0, 0, pix_width, pix_height, pix};
+	auto overlay = Overlay{session, 0, -pix_height,
+		pix_width, pix_height, pix};
 
 	overlay.show();
 	char c;

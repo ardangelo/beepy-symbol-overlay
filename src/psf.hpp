@@ -30,7 +30,7 @@ public: // interface
 
 	void drawUtf16(uint16_t utf16,
 		unsigned char *buf, int buf_width, int buf_height,
-		int x, int y);
+		int x, int y, int scale);
 
 };
 

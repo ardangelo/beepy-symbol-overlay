@@ -84,7 +84,7 @@ size_t PSF::getWidth()
 
 void PSF::drawUtf16(uint16_t utf16,
 	unsigned char *buf, int buf_width, int buf_height,
-	int x, int y)
+	int x, int y, int scale)
 {
 	// Map UTF16 to PSF index
 	auto utf16Psfindex = m_table.find(utf16);
@@ -121,26 +121,27 @@ void PSF::drawUtf16(uint16_t utf16,
 		return;
 	}
 
-	// Draw character at double height, black on white
+	// Draw character, black on white
 	for (int sy = 0; sy < m_header.charsize; sy++) {
 
-		auto dy = 2 * (y + sy);
+		auto dy = y + (scale * sy);
 		if (dy >= buf_height) {
 			break;
 		}
 
 		for (int sx = 0; sx < psf1_charwidth; sx++) {
 
-			auto dx = 2 * (x + sx);
+			auto dx = x + (scale * sx);
 			if (dx >= buf_width) {
 				break;
 			}
 
 			auto pixel = (glyph[sy] >> (7 - sx)) & 1;
-			buf[((dy + 0) * buf_width) + dx + 0] = (pixel ? 0x00 : 0xff);
-			buf[((dy + 0) * buf_width) + dx + 1] = (pixel ? 0x00 : 0xff);
-			buf[((dy + 1) * buf_width) + dx + 0] = (pixel ? 0x00 : 0xff);
-			buf[((dy + 1) * buf_width) + dx + 1] = (pixel ? 0x00 : 0xff);
+			for (int dsx = 0; dsx < scale; dsx++) {
+				for (int dsy = 0; dsy < scale; dsy++) {
+					buf[((dy + dsy) * buf_width) + dx + dsx] = (pixel ? 0x00 : 0xff);
+				}
+			}
 		}
 	}
 }
