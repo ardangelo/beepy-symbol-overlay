@@ -109,16 +109,19 @@ int main(int argc, char** argv)
 
 			auto keycodeX11name = keycodeX11names.find(symkey);
 			if (keycodeX11name == keycodeX11names.end()) {
+printf("skip no name for keycode %d\n", symkey);
 				continue;
 			}
 
 			auto utf16 = x11name_to_utf16(keycodeX11name->second);
 			if (utf16 == 0x0) {
+printf("skip no utf16 for %s\n", keycodeX11name->second.c_str());
 				continue;
 			}
 
 			auto utf16Psfidx = utf16Psfindices.find(utf16);
 			if (utf16Psfidx == utf16Psfindices.end()) {
+printf("skip no index for utf16 %x\n", utf16);
 				continue;
 			}
 
@@ -126,10 +129,12 @@ int main(int argc, char** argv)
 			auto x = (symkey - symkey_rows[row].first) * 8;
 			auto y = row * 16;
 printf("Draw %s idx %x at %d %d\n", keycodeX11name->second.c_str(), psf_idx, x, y);
-			draw_psf1_character(default_psf_path, psf_idx, pix, 10 * 8, 3 * 16, x, y);
+			draw_psf1_character(default_psf_path, psf_idx, pix,
+				10 * 8, 3 * 16, x, y);
 		}
 	}
 
+/*
 	for (int i = 0; i < 3 * 10; i++) {
 		for (int j = 0; j < 10 * 8; j++) {
 			auto p = pix[(i * 10 * 8) + j];
@@ -138,12 +143,13 @@ printf("Draw %s idx %x at %d %d\n", keycodeX11name->second.c_str(), psf_idx, x, 
 		printf("\n");
 	}
 	printf("\n");
-
+*/
 	auto session = SharpSession{sharp_dev};
-	auto overlay = Overlay{session, 10 * 8, 3 * 16, 0, 0, pix};
+	auto overlay = Overlay{session, 0, 0, 10 * 8, 3 * 16, pix};
 
 	overlay.show();
-	sleep(5);
+	char c;
+	read(0, &c, 1);
 	overlay.hide();
 
 	return 0;
