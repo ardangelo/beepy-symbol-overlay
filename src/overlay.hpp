@@ -23,7 +23,7 @@ private: // members
 
 public: // interface
 	Overlay(SharpSession& session,
-		int x, int y, int width, int height, unsigned char const* pix);
+		int x, int y, size_t width, size_t height, unsigned char const* pix);
 	Overlay(Overlay&& expiring);
 	~Overlay();
 

@@ -87,10 +87,11 @@ int SharpSession::get()
 }
 
 Overlay::Overlay(SharpSession& session,
-	int x, int y, int width, int height, unsigned char const* pix)
+	int x, int y, size_t width, size_t height, unsigned char const* pix)
 	: m_session{session}
 	, m_storage{overlay_add(session.get(), sharp_overlay_t {
-		.x = x, .y = y, .width = width, .height = height, .pixels = pix } )}
+		.x = x, .y = y, .width = (int)width, .height = (int)height,
+		.pixels = pix } )}
 	, m_display{}
 {}
 

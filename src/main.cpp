@@ -20,16 +20,109 @@ extern uint16_t x11name_to_utf16(std::string const& x11name);
 static auto const default_keymap_path = "/usr/share/kbd/keymaps/beepy-kbd.map";
 static auto const default_psf_path = "Uni1-VGA16.psf";
 
-static const auto symkey_rows = std::vector<std::pair<int, int>>
-{ {16, 25}, {30, 38}, {43, 50} };
-static const auto alphaUtf16Table = std::unordered_map<int, uint16_t>
-{ {16, 'Q'}, {17, 'W'}, {18, 'E'}, {19, 'R'}, {20, 'T'}, {21, 'Y'}
-, {22, 'U'}, {23, 'I'}, {24, 'O'}, {25, 'P'}
-, {30, 'A'}, {31, 'S'}, {32, 'D'}, {33, 'F'}, {34, 'G'}, {35, 'H'}
-, {36, 'J'}, {37, 'K'}, {38, 'L'}
-, {44, 'Z'}, {45, 'X'}, {46, 'C'}, {47, 'V'}, {48, 'B'}, {49, 'N'}
-, {50, 'M'}, {113, '$'}
+static const auto symkey_alpha_table
+	= std::vector<std::vector<std::pair<int, int>>>
+	{ { {16, 'Q'}, {17, 'W'}, {18, 'E'}, {19, 'R'}, {20, 'T'}, {21, 'Y'}
+	  , {22, 'U'}, {23, 'I'}, {24, 'O'}, {25, 'P'} }
+	, { {30, 'A'}, {31, 'S'}, {32, 'D'}, {33, 'F'}, {34, 'G'}, {35, 'H'}
+	  , {36, 'J'}, {37, 'K'}, {38, 'L'} }
+	, { { 0,'\0'}, {44, 'Z'}, {45, 'X'}, {46, 'C'}, {47, 'V'}, {48, 'B'}
+	  , {49, 'N'}, {50, 'M'}, {113, '$'} }
 };
+
+class KeymapRender
+{
+public: // types
+	using Keymap = std::map<int, uint16_t>;
+
+private: // members
+	static constexpr auto fret_height = 4;
+	static constexpr auto cell_padding = 1;
+	static constexpr auto char_padding = 1;
+
+	static constexpr auto num_rows = 3;
+	static constexpr auto num_cols = 10;
+
+	PSF m_psf;
+	size_t m_cellWidth, m_cellHeight;
+	size_t m_width, m_height;
+	std::unique_ptr<unsigned char> m_pix;
+
+public: // interface
+	KeymapRender(char const* psf_path, Keymap const& keymap);
+
+	auto getWidth() const { return m_width; }
+	auto getHeight() const { return m_height; }
+	auto get() const { return m_pix.get(); }
+};
+
+KeymapRender::KeymapRender(char const* psf_path, Keymap const& keymap)
+	: m_psf{psf_path}
+	, m_cellWidth{40}
+	, m_cellHeight{fret_height + char_padding + 2 * m_psf.getHeight()}
+	, m_width{400}
+	, m_height{num_rows * m_cellHeight}
+	, m_pix{new unsigned char[m_width * m_height]}
+{
+	// Set to white background
+	::memset(m_pix.get(), 0xff, m_width * m_height);
+
+	// Render rows
+	for (size_t row = 0; row < num_rows; row++) {
+
+		// Render fret
+		::memset(&m_pix.get()[(row * m_cellHeight) * m_width], 0,
+			m_width * fret_height);
+
+		// Render key contents
+		for (size_t col = 0; col < 10; col++) {
+
+			// Render cell padding
+			for (size_t y = fret_height; y < m_cellHeight; y++) {
+				for (size_t x = 0; x < cell_padding; x++) {
+					auto dx = (col * m_cellWidth) + x;
+					auto dy = (row * m_cellHeight) + y;
+					m_pix.get()[dy * m_width + dx] = 0;
+				}
+			}
+
+			// Get alpha / symbol keys
+			if ((symkey_alpha_table.size() <= row)
+			 || (symkey_alpha_table[row].size() <= col)) {
+				continue;
+			}
+			auto const& [symkey, alpha_utf16] = symkey_alpha_table[row][col];
+			if (symkey == 0) {
+				continue;
+			}
+
+			// Look up key mapping
+			auto symkeyUtf16 = keymap.find(symkey);
+			if (symkeyUtf16 == keymap.end()) {
+				continue;
+			}
+
+			// Render alpha key
+			m_psf.drawUtf16(alpha_utf16,
+				m_pix.get(), m_width, m_height,
+				// Left-align on left half, right-align on right half
+				(col * m_cellWidth) + ((col < 5)
+					? cell_padding + char_padding
+					: m_cellWidth - (char_padding + m_psf.getWidth())),
+				(row * m_cellHeight) + fret_height + char_padding,
+				1);
+
+			// Render mapped key
+			m_psf.drawUtf16(symkeyUtf16->second,
+				m_pix.get(), m_width, m_height,
+				// Centered, 2x scale
+				(col * m_cellWidth) + (m_cellWidth / 2 - m_psf.getWidth()),
+				(row * m_cellHeight) + fret_height
+					+ (m_cellHeight / 2 - m_psf.getHeight()),
+				2);
+		}
+	}
+}
 
 // Convert X keymap into map from keycode to x11name
 static auto parse_keymap(char const* keymap_path)
@@ -102,73 +195,22 @@ int main(int argc, char** argv)
 		: default_keymap_path;
 
 	// Parse keymap
-	auto keycodeX11names = parse_keymap(keymap_path);
+	auto symkeyX11names = parse_keymap(keymap_path);
 
-	// Open PSF renderer
-	auto psf = PSF{default_psf_path};
-
-	// Render table
-	auto symkey_cols = [](std::vector<std::pair<int, int>> const& symkey_rows) {
-		auto max = 0;
-		for (auto const& [lo, hi] : symkey_rows) {
-			auto width = hi - lo + 1;
-			if (width > max) { max = width; }
+	// Build symkey map
+	auto keymap = KeymapRender::Keymap{};
+	for (auto const& [symkey, x11name] : symkeyX11names) {		
+		auto sym_utf16 = x11name_to_utf16(x11name);
+		if (sym_utf16 == 0x0) {
+			continue;
 		}
-		return max;
-	}(symkey_rows);
-	auto cell_height = 5 + 2 * psf.getHeight();
-	auto cell_width = 40;
-	auto pix_height = 3 * cell_height;
-	auto pix_width = 10 * cell_width;
-	unsigned char pix[pix_width * pix_height];
-	::memset(pix, 0xff, pix_width * pix_height);
-	for (size_t row = 0; row < 3; row++) {
-		auto const& [sk_lo, sk_hi] = symkey_rows[row];
-
-		for (int x = 0; x < pix_width; x++) {
-			pix[(row * cell_height) * pix_width + x] = 0x0;
-			pix[(row * cell_height + 1) * pix_width + x] = 0x0;
-			pix[(row * cell_height + cell_height - 2) * pix_width + x] = 0x0;
-			pix[(row * cell_height + cell_height - 1) * pix_width + x] = 0x0;
-		}
-
-		for (size_t col = 0; col < 10; col++) {
-			for (int y = 0; y < cell_height; y++) {
-				pix[(row * cell_height + y) * pix_width + (col * cell_width)] = 0x0;
-			}
-
-			if (col <= (sk_hi - sk_lo)) {
-				auto symkey = sk_lo + col;
-
-				auto keycodeX11name = keycodeX11names.find(symkey);
-				if (keycodeX11name == keycodeX11names.end()) {
-					continue;
-				}
-
-				auto alphaUtf16 = alphaUtf16Table.find(symkey);
-				if (alphaUtf16 == alphaUtf16Table.end()) {
-					continue;
-				}
-
-				auto sym_utf16 = x11name_to_utf16(keycodeX11name->second);
-				if (sym_utf16 == 0x0) {
-					continue;
-				}
-
-				auto x = col * cell_width + 1;
-				auto y = row * cell_height + 3;
-				psf.drawUtf16(sym_utf16,
-					pix, pix_width, pix_height, x + 12, y, 2);
-				psf.drawUtf16(alphaUtf16->second,
-					pix, pix_width, pix_height,
-					(col < 5) ? x + 2 : x + 30, y + 2, 1);
-			}
-		}
+		keymap[symkey] = sym_utf16;
 	}
+	auto keymapRender = KeymapRender{default_psf_path, keymap};
 
 	auto session = SharpSession{sharp_dev};
-	auto overlay = Overlay{session, 0, -pix_height,
-		pix_width, pix_height, pix};
+	auto overlay = Overlay{session, 0, -(int)keymapRender.getHeight(),
+		keymapRender.getWidth(), keymapRender.getHeight(), keymapRender.get()};
 
 	overlay.show();
 	char c;
