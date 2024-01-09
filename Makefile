@@ -11,7 +11,7 @@ all: symbol-overlay
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $^ -o $@
 
-symbol-overlay: src/main.o src/overlay.o src/psf.o src/x11name_to_utf16.o
+symbol-overlay: src/main.o src/KeymapRender.o src/Overlay.o src/PSF.o src/x11name_to_utf16.o
 	$(CXX) $^ -o $@
 
 clean:

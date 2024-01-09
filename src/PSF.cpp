@@ -6,7 +6,7 @@
 #include <string>
 #include <stdexcept>
 
-#include "psf.hpp"
+#include "PSF.hpp"
 
 using namespace std::literals;
 

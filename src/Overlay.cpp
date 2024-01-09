@@ -12,7 +12,7 @@
 
 #include "ioctl_iface.h"
 
-#include "overlay.hpp"
+#include "Overlay.hpp"
 
 using namespace std::literals;
 
