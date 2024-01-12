@@ -29,4 +29,6 @@ public: // interface
 
 	void show();
 	void hide();
+	void eject();
+	void clear_all();
 };

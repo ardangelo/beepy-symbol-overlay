@@ -85,11 +85,19 @@ static auto parse_keymap(char const* keymap_path)
 	return result;
 }
 
+static void usage(char const* const* argv)
+{
+	fprintf(stderr, "usage: %s sharp_dev [--clear-all] sharp_dev [keymap_path]\n", argv[0]);
+	fprintf(stderr, "sharp_dev  Sharp device to command (e.g. /dev/dri/card0)\n");
+	fprintf(stderr, "keymap_path  Path to X11 keymap to show\n");
+	fprintf(stderr, "  (default %s)\n", default_keymap_path);
+}
+
 int main(int argc, char** argv)
 {
 	// Check arguments
 	if ((argc != 2) && (argc != 3)) {
-		fprintf(stderr, "usage: %s sharp_dev [keymap_path]\n", argv[0]);
+		usage(argv);
 		return 1;
 	}
 
@@ -118,13 +126,7 @@ int main(int argc, char** argv)
 		keymapRender.getWidth(), keymapRender.getHeight(), keymapRender.get()};
 
 	overlay.show();
-#if 0
-	char c;
-	read(0, &c, 1);
-#else
-	sleep(5);
-#endif
-	overlay.hide();
+	overlay.eject();
 
 	return 0;
 }

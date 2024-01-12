@@ -58,6 +58,13 @@ static void overlay_hide(int fd, void* display)
 	}
 }
 
+static void overlay_clear(int fd)
+{
+	if (auto rc = ::ioctl(fd, DRM_IOCTL_SHARP_OV_CLEAR)) {
+		throw std::runtime_error(__func__ + " failed: "s + ::strerror(rc));
+	}
+}
+
 SharpSession::SharpSession(char const* sharp_dev)
 	: m_fd{::open(sharp_dev, O_RDWR)}
 {
@@ -118,7 +125,7 @@ Overlay::~Overlay()
 
 void Overlay::show()
 {
-	if (m_display == nullptr) {
+	if (m_storage && (m_display == nullptr)) {
 		m_display = overlay_show(m_session.get(), m_storage);
 	}
 }
@@ -129,4 +136,16 @@ void Overlay::hide()
 		overlay_hide(m_session.get(), m_display);
 		m_display = nullptr;
 	}
+}
+
+void Overlay::eject()
+{
+	m_storage = nullptr;
+	m_display = nullptr;
+}
+
+
+void Overlay::clear_all()
+{
+	overlay_clear(m_session.get());
 }
