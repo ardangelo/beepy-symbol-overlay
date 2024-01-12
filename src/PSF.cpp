@@ -27,39 +27,33 @@ static constexpr auto unicode_table_delim = 0xffff;
 */
 
 static PSF::Utf16Table
-gen_psf1_utf16_table(FILE* fp)
+gen_psf1_utf16_table(unsigned char const* psf_data, size_t psf_size)
 {
 	auto result = std::unordered_map<uint16_t, uint16_t>{};
-
-	// Seek to entries
-	if (auto rc = ::fseek(fp, unicode_table_offs, SEEK_SET)) {
-		throw std::runtime_error("failed to seek to Unicode table");
-	}
 
 	// Read entries
 	auto psf_idx = uint16_t{0};
 	auto unicode_val = uint16_t{0};
-	while (::fread(&unicode_val, sizeof(unicode_val), 1, fp) == 1) {
+	auto ptr = (psf_data + unicode_table_offs);
+	while (ptr + (sizeof(uint16_t) - 1) < (psf_data + psf_size)) {
+		unicode_val = *(uint16_t const*)ptr;
 		if (unicode_val == unicode_table_delim) {
 			psf_idx++;
 		} else {
 			result[unicode_val] = psf_idx;
 		}
+		ptr += sizeof(uint16_t);
 	}
 
 	return result;
 }
 
-PSF::PSF(char const* psf_path)
-	: m_file{::fopen(psf_path, "rb"), ::fclose}
+PSF::PSF(unsigned char const* psf_data, size_t psf_size)
+	: m_psfData{psf_data}
+	, m_psfSize{psf_size}
 	, m_table{}
-	, m_header{}
+	, m_header{*(psf1_header const*)m_psfData}
 {
-	// Read header
-	if (::fread(&m_header, sizeof(m_header), 1, m_file.get()) != 1) {
-		throw std::runtime_error("failed to read header from "s + psf_path);;
-	}
-
 	// Validate header
 	if (m_header.magic != psf1_magic) {
 		throw std::runtime_error("invalid PSF1 magic number");
@@ -69,7 +63,7 @@ PSF::PSF(char const* psf_path)
 	}
 
 	// Read UTF16 translation table
-	m_table = gen_psf1_utf16_table(m_file.get());
+	m_table = gen_psf1_utf16_table(m_psfData, m_psfSize);
 }
 
 size_t PSF::getHeight()
@@ -99,17 +93,13 @@ void PSF::drawUtf16(uint16_t utf16,
 	}
 
 	// Read character
-	if (auto rc = ::fseek(m_file.get(),
-		sizeof(m_header) + (m_header.charsize * idx), SEEK_SET)) {
-		throw std::runtime_error("failed to seek to char at "s + std::to_string(idx));
-	}
 	if (m_header.charsize == 0) {
 		throw std::runtime_error("header has zero charsize");
 	}
-	unsigned char glyph[m_header.charsize];
-	if (::fread(glyph, m_header.charsize, 1, m_file.get()) != 1) {
-		throw std::runtime_error("failed to read char at "s + std::to_string(idx));
+	if (sizeof(m_header) + (m_header.charsize * idx) >= m_psfSize) {
+		throw std::runtime_error("character index out of range");
 	}
+	auto glyph = m_psfData + sizeof(m_header) + (m_header.charsize * idx);
 
 	// Starting coordinates
 	y = (y < 0) ? buf_height + y : y;

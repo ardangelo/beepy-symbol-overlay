@@ -17,8 +17,8 @@ static const auto symkey_alpha_table
 	  , {49, 'N'}, {50, 'M'}, {113, '$'} }
 };
 
-KeymapRender::KeymapRender(char const* psf_path, Keymap const& keymap)
-	: m_psf{psf_path}
+KeymapRender::KeymapRender(unsigned char const* psf_data, size_t psf_size, Keymap const& keymap)
+	: m_psf{psf_data, psf_size}
 	, m_cellWidth{40}
 	, m_cellHeight{fret_height + char_padding + 2 * m_psf.getHeight()}
 	, m_width{400}

@@ -24,7 +24,7 @@ private: // members
 	std::unique_ptr<unsigned char> m_pix;
 
 public: // interface
-	KeymapRender(char const* psf_path, Keymap const& keymap);
+	KeymapRender(unsigned char const* psf_data, size_t psf_size, Keymap const& keymap);
 
 	auto getWidth() const { return m_width; }
 	auto getHeight() const { return m_height; }

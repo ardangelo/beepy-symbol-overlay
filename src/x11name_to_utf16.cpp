@@ -748,6 +748,7 @@ static const auto x11nameUtf16Map1 = std::unordered_map<std::string, uint16_t>
 , { "eth", 0xf0 }
 , { "Etilde", 0x1ebc }
 , { "etilde", 0x1ebd }
+, { "euro", 0x20ac }
 , { "EuroSign", 0x20ac }
 , { "exclam", 0x21 }
 , { "exclamdown", 0xa1 }

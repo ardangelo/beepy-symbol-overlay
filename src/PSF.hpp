@@ -1,7 +1,5 @@
 #pragma once
 
-#include <fcntl.h>
-
 #include <memory>
 #include <unordered_map>
 
@@ -18,12 +16,13 @@ public: // types
 	}__attribute__((packed));
 
 private: // members
-	std::unique_ptr<FILE, decltype(&::fclose)> m_file;
+	unsigned char const* m_psfData;
+	size_t m_psfSize;
 	Utf16Table m_table;
 	psf1_header m_header;
 
 public: // interface
-	PSF(char const* psf_path);
+	PSF(unsigned char const* psf_data, size_t psf_size);
 
 	size_t getHeight();
 	size_t getWidth();

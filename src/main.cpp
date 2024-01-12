@@ -15,10 +15,19 @@
 // src/x11name_to_utf16.cpp
 extern uint16_t x11name_to_utf16(std::string const& x11name);
 
+// Converted font
+extern "C" {
+extern const char _binary_font_psf_start;
+extern const char _binary_font_psf_end;
+}
+static const auto psf_start = (unsigned char const*)&_binary_font_psf_start;
+static const auto psf_size = (size_t)(
+	(unsigned char const*)&_binary_font_psf_end
+		- (unsigned char const*)&_binary_font_psf_start);
+
 using namespace std::literals;
 
 static auto const default_keymap_path = "/usr/share/kbd/keymaps/beepy-kbd.map";
-static auto const default_psf_path = "Uni1-VGA16.psf";
 
 // Convert X keymap into map from keycode to x11name
 static auto parse_keymap(char const* keymap_path)
@@ -102,15 +111,19 @@ int main(int argc, char** argv)
 		}
 		keymap[symkey] = sym_utf16;
 	}
-	auto keymapRender = KeymapRender{default_psf_path, keymap};
+	auto keymapRender = KeymapRender{psf_start, psf_size, keymap};
 
 	auto session = SharpSession{sharp_dev};
 	auto overlay = Overlay{session, 0, -(int)keymapRender.getHeight(),
 		keymapRender.getWidth(), keymapRender.getHeight(), keymapRender.get()};
 
 	overlay.show();
+#if 0
 	char c;
 	read(0, &c, 1);
+#else
+	sleep(5);
+#endif
 	overlay.hide();
 
 	return 0;
