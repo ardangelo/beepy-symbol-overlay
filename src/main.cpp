@@ -89,7 +89,7 @@ int main(int argc, char** argv)
 {
 	// Check arguments
 	if ((argc != 2) && (argc != 3)) {
-		fprintf(stderr, "usage: %s sharp_dev [keymap_path]\n");
+		fprintf(stderr, "usage: %s sharp_dev [keymap_path]\n", argv[0]);
 		return 1;
 	}
 
