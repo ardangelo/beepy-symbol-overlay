@@ -27,7 +27,10 @@ static const auto psf_size = (size_t)(
 
 using namespace std::literals;
 
-static auto const default_keymap_path = "/usr/share/kbd/keymaps/beepy-kbd.map";
+#ifndef DEFAULT_KEYMAP_PATH
+#define DEFAULT_KEYMAP_PATH "/usr/share/kbd/keymaps/beepy-kbd.map"
+#endif
+static auto const default_keymap_path = DEFAULT_KEYMAP_PATH;
 
 // Convert X keymap into map from keycode to x11name
 static auto parse_keymap(char const* keymap_path)
