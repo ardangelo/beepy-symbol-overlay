@@ -20,7 +20,7 @@ src/font.o: font.psf
 	$(OBJCOPY) -O elf32-littlearm -I binary $< $@
 
 symbol-overlay: src/main.o src/KeymapRender.o src/Overlay.o src/PSF.o src/x11name_to_utf16.o src/font.o
-	$(CXX) $^ -o $@
+	$(CXX) -static $^ -o $@
 
 clean:
 	rm -f src/*.o symbol-overlay
