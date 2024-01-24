@@ -13,8 +13,8 @@ all: symbol-overlay
 	$(CXX) $(CXXFLAGS) -c $^ -o $@
 
 # Debug info hangs compiler
-x11name_to_utf16.o: x11name_to_utf16.cpp
-	$(CXX) -O2 -std=c++17 $(CXXFLAGS) -c $^ -o $@
+src/x11name_to_utf16.o: src/x11name_to_utf16.cpp
+	$(CXX) -O2 -std=c++17 -c $^ -o $@
 
 src/font.o: font.psf
 	$(OBJCOPY) -O elf32-littlearm -I binary $< $@

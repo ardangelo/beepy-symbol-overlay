@@ -518,7 +518,10 @@ static const auto x11nameUtf16Map1 = std::unordered_map<std::string, uint16_t>
 , { "brokenbar", 0xa6 }
 , { "Byelorussian_shortu", 0x45e }
 , { "Byelorussian_SHORTU", 0x40e }
-, { "C", 0x43 }
+};
+
+static const auto x11nameUtf16Map2 = std::unordered_map<std::string, uint16_t>
+{ { "C", 0x43 }
 , { "c", 0x63 }
 , { "Cabovedot", 0x10a }
 , { "cabovedot", 0x10b }
@@ -919,7 +922,7 @@ static const auto x11nameUtf16Map1 = std::unordered_map<std::string, uint16_t>
 , { "guillemotright", 0xbb }
 };
 
-static const auto x11nameUtf16Map2 = std::unordered_map<std::string, uint16_t>
+static const auto x11nameUtf16Map3 = std::unordered_map<std::string, uint16_t>
 { { "H", 0x48 }
 , { "h", 0x68 }
 , { "hairspace", 0x200a }
@@ -1228,7 +1231,10 @@ static const auto x11nameUtf16Map2 = std::unordered_map<std::string, uint16_t>
 , { "lowrightcorner", 0x2518 }
 , { "Lstroke", 0x141 }
 , { "lstroke", 0x142 }
-, { "M", 0x4d }
+};
+
+static const auto x11nameUtf16Map4 = std::unordered_map<std::string, uint16_t>
+{ { "M", 0x4d }
 , { "m", 0x6d }
 , { "Mabovedot", 0x1e40 }
 , { "mabovedot", 0x1e41 }
@@ -1520,7 +1526,7 @@ static const auto x11nameUtf16Map2 = std::unordered_map<std::string, uint16_t>
 , { "stricteq", 0x2263 }
 };
 
-static const auto x11nameUtf16Map3 = std::unordered_map<std::string, uint16_t>
+static const auto x11nameUtf16Map5 = std::unordered_map<std::string, uint16_t>
 { { "T", 0x54 }
 , { "t", 0x74 }
 , { "Tab", 0x9 }
@@ -1777,6 +1783,12 @@ uint16_t x11name_to_utf16(std::string const& x11name)
 		return utf16;
 	}
 	if (auto utf16 = at_default(x11nameUtf16Map3, x11name, 0x0)) {
+		return utf16;
+	}
+	if (auto utf16 = at_default(x11nameUtf16Map4, x11name, 0x0)) {
+		return utf16;
+	}
+	if (auto utf16 = at_default(x11nameUtf16Map5, x11name, 0x0)) {
 		return utf16;
 	}
 

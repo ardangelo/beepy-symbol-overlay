@@ -8,9 +8,12 @@
 #include <map>
 #include <stdexcept>
 #include <fstream>
+#include <tuple>
 
 #include "Overlay.hpp"
 #include "KeymapRender.hpp"
+
+#include "getopt.hpp"
 
 // src/x11name_to_utf16.cpp
 extern uint16_t x11name_to_utf16(std::string const& x11name);
@@ -90,28 +93,84 @@ static auto parse_keymap(char const* keymap_path)
 
 static void usage(char const* const* argv)
 {
-	fprintf(stderr, "usage: %s sharp_dev [--clear-all] sharp_dev [keymap_path]\n", argv[0]);
-	fprintf(stderr, "sharp_dev  Sharp device to command (e.g. /dev/dri/card0)\n");
-	fprintf(stderr, "keymap_path  Path to X11 keymap to show\n");
+	fprintf(stderr, "usage: %s sharp_dev [--clear-all] [--meta] [--keymap=<path>] sharp_dev \n", argv[0]);
+	fprintf(stderr, "sharp_dev    Sharp device to command (e.g. /dev/dri/card0)\n");
+	fprintf(stderr, "--clear-all  Clear all overlays and exit\n");
+	fprintf(stderr, "--meta       Display Meta mode keymap instead of Symbol keymap\n");
+	fprintf(stderr, "--keymap     Path to X11 keymap to show for Symbol\n");
 	fprintf(stderr, "  (default %s)\n", default_keymap_path);
+}
+
+static auto parse_argv(int argc, char** argv)
+{
+	auto clear_all = false;
+	auto meta = false;
+	auto keymapPath = std::string{default_keymap_path};
+	auto sharpDev = std::string{};
+
+
+	constexpr auto ClearAll = Argv::make_Option("clear-all", 'c');
+	constexpr auto Help = Argv::make_Option("help", 'h');
+	constexpr auto Meta = Argv::make_Option("meta", 'm');
+	constexpr auto KeymapPath = Argv::make_Param("keymap", 'k');
+
+	Argv::GNUOption opts[] = {
+		ClearAll, Help, Meta,
+		KeymapPath,
+		Argv::GNUOptionDone
+	};
+
+	auto incomingArgv = Argv::IncomingArgv{opts, argc, argv};
+	while (true) {
+		auto&& [c, opt] = incomingArgv.get_next();
+		if (c < 0) {
+			break;
+		}
+
+		switch (c) {
+
+		case ClearAll.val:
+			clear_all = true;
+			break;
+
+		case Meta.val:
+			meta = true;
+			break;
+
+		case KeymapPath.val:
+			keymapPath = std::move(opt);
+			break;
+
+		case Help.val:
+			usage(argv);
+			exit(0);
+
+		default:
+			fprintf(stderr, "Unexpected argument: -%c\n", c);
+			usage(argv);
+			exit(1);
+		}
+	}
+
+	auto&& [rest_argc, rest_argv] = incomingArgv.get_rest();
+	if (rest_argc == 0) {
+		fprintf(stderr, "Expected sharp_dev argument\n");
+		usage(argv);
+		exit(1);
+	}
+
+	sharpDev = std::string{rest_argv[0]};
+
+	return std::make_tuple(clear_all, meta, std::move(keymapPath), std::move(sharpDev));
 }
 
 int main(int argc, char** argv)
 {
-	// Check arguments
-	if ((argc != 2) && (argc != 3)) {
-		usage(argv);
-		return 1;
-	}
-
-	// Get arguments
-	auto sharp_dev = argv[1];
-	auto keymap_path = (argc > 2)
-		? argv[2]
-		: default_keymap_path;
+	// Parse arguments
+	auto&& [clear_all, meta, keymapPath, sharpDev] = parse_argv(argc, argv);
 
 	// Parse keymap
-	auto symkeyX11names = parse_keymap(keymap_path);
+	auto symkeyX11names = parse_keymap(keymapPath.c_str());
 
 	// Build symkey map
 	auto keymap = KeymapRender::Keymap{};
@@ -124,7 +183,7 @@ int main(int argc, char** argv)
 	}
 	auto keymapRender = KeymapRender{psf_start, psf_size, keymap};
 
-	auto session = SharpSession{sharp_dev};
+	auto session = SharpSession{sharpDev.c_str()};
 	auto overlay = Overlay{session, 0, -(int)keymapRender.getHeight(),
 		keymapRender.getWidth(), keymapRender.getHeight(), keymapRender.get()};
 
