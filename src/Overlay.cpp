@@ -145,7 +145,7 @@ void Overlay::eject()
 }
 
 
-void Overlay::clear_all()
+void Overlay::clear_all(SharpSession& session)
 {
-	overlay_clear(m_session.get());
+	overlay_clear(session.get());
 }

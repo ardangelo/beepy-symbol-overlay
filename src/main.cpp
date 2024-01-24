@@ -169,6 +169,13 @@ int main(int argc, char** argv)
 	// Parse arguments
 	auto&& [clear_all, meta, keymapPath, sharpDev] = parse_argv(argc, argv);
 
+	// Clear and exit
+	if (clear_all) {
+		auto session = SharpSession{sharpDev.c_str()};
+		Overlay::clear_all(session);
+		return 0;
+	}
+
 	// Parse keymap
 	auto symkeyX11names = parse_keymap(keymapPath.c_str());
 

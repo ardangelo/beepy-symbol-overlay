@@ -30,5 +30,6 @@ public: // interface
 	void show();
 	void hide();
 	void eject();
-	void clear_all();
+
+	static void clear_all(SharpSession& session);
 };
