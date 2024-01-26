@@ -35,6 +35,20 @@ using namespace std::literals;
 #endif
 static auto const default_keymap_path = DEFAULT_KEYMAP_PATH;
 
+static constexpr auto left_arrow = uint16_t{0x2190};
+static constexpr auto right_arrow = uint16_t{0x2192};
+static constexpr auto up_arrow = uint16_t{0x2191};
+static constexpr auto down_arrow = uint16_t{0x2193};
+
+static const auto symkeyMetaMap = KeymapRender::ThreeKeymap
+	{ {16, {'W', 'd', left_arrow}}, {17, {left_arrow, '\0', '\0'}}, {18, {up_arrow, '\0', '\0'}}, {19, {'H', 'o', 'm'}}, {20, {'T', 'a', 'b'}}, {21, {}}
+	  , {22, {}}, {23, {}}, {24, {'P', 'g', up_arrow}}, {25, {'P', 'g', down_arrow}}
+	, {30, {'W', 'd', right_arrow}}, {31, {down_arrow, '\0', '\0'}}, {32, {right_arrow, '\0', '\0'}}, {33, {'E', 'n', 'd'}}, {34, {}}, {35, {}}
+	  , {36, {}}, {37, {}}, {38, {}}
+	, { 0, {}}, {44, {}}, {45, {'C', 't', 'l'}}, {46, {'A', 'l', 't'}}, {47, {}}, {48, {}}
+	  , {49, {'K', 'b', down_arrow}}, {50, {'K', 'b', up_arrow}}, {113, {'K', 'b', 't'}}
+};
+
 // Convert X keymap into map from keycode to x11name
 static auto parse_keymap(char const* keymap_path)
 {
@@ -176,24 +190,40 @@ int main(int argc, char** argv)
 		return 0;
 	}
 
-	// Parse keymap
-	auto symkeyX11names = parse_keymap(keymapPath.c_str());
+	// Create keymap render
+	auto keymapRender = [&]() {
 
-	// Build symkey map
-	auto keymap = KeymapRender::Keymap{};
-	for (auto const& [symkey, x11name] : symkeyX11names) {		
-		auto sym_utf16 = x11name_to_utf16(x11name);
-		if (sym_utf16 == 0x0) {
-			continue;
+		// Meta mode overlay
+		if (meta) {
+
+			return KeymapRender{psf_start, psf_size, symkeyMetaMap};
+
+		// Symkey overlay
+		} else {
+
+			// Parse keymap
+			auto symkeyX11names = parse_keymap(keymapPath.c_str());
+
+			// Build symkey map
+			auto keymap = KeymapRender::Keymap{};
+			for (auto const& [symkey, x11name] : symkeyX11names) {
+				auto sym_utf16 = x11name_to_utf16(x11name);
+				if (sym_utf16 == 0x0) {
+					continue;
+				}
+				keymap[symkey] = sym_utf16;
+			}
+
+			return KeymapRender{psf_start, psf_size, keymap};
 		}
-		keymap[symkey] = sym_utf16;
-	}
-	auto keymapRender = KeymapRender{psf_start, psf_size, keymap};
+	}();
 
+	// Send overlay to driver
 	auto session = SharpSession{sharpDev.c_str()};
 	auto overlay = Overlay{session, 0, -(int)keymapRender.getHeight(),
 		keymapRender.getWidth(), keymapRender.getHeight(), keymapRender.get()};
 
+	// Display and detach overlay
 	overlay.show();
 	overlay.eject();
 

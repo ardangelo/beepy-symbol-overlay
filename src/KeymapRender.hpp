@@ -9,7 +9,8 @@ class KeymapRender
 {
 public: // types
 	using Keymap = std::unordered_map<int, uint16_t>;
-	using Picmap = std::unordered_map<int, char const*>;
+	using Utf16Triple = std::tuple<uint16_t, uint16_t, uint16_t>;
+	using ThreeKeymap = std::unordered_map<int, Utf16Triple>;
 
 private: // members
 	PSF m_psf;
@@ -22,7 +23,7 @@ private: // helpers
 
 public: // interface
 	KeymapRender(unsigned char const* psf_data, size_t psf_size, Keymap const& keymap);
-	KeymapRender(unsigned char const* psf_data, size_t psf_size, Picmap const& picmap, size_t pic_width, size_t pic_height);
+	KeymapRender(unsigned char const* psf_data, size_t psf_size, ThreeKeymap const& threeKeymap);
 
 	auto getWidth() const { return m_width; }
 	auto getHeight() const { return m_height; }

@@ -114,6 +114,64 @@ KeymapRender::KeymapRender(unsigned char const* psf_data, size_t psf_size, Keyma
 	);
 }
 
-KeymapRender::KeymapRender(unsigned char const* psf_data, size_t psf_size, Picmap const& picmap, size_t pic_width, size_t pic_height)
+KeymapRender::KeymapRender(unsigned char const* psf_data, size_t psf_size, KeymapRender::ThreeKeymap const& threeKeymap)
 	: KeymapRender(psf_data, psf_size)
-{}
+{
+	render_map(m_pix.get(), m_width, m_height, m_cellWidth, m_cellHeight, m_psf,
+		[this, &threeKeymap](size_t row, size_t col, int symkey) {
+
+			// Look up symbol
+			auto symkeyUtf16Pair = threeKeymap.find(symkey);
+			if (symkeyUtf16Pair == threeKeymap.end()) {
+				return false;
+			}
+
+			// Render mapped keys
+			auto&& [utf16_1, utf16_2, utf16_3] = symkeyUtf16Pair->second;
+
+			// Exit if all empty
+			if ((utf16_1 == '\0') && (utf16_2 == '\0') && (utf16_3 == '\0')) {
+				return false;
+
+			// No second character renders first character large
+			} else if (utf16_2 == '\0') {
+
+				m_psf.drawUtf16(utf16_1,
+					m_pix.get(), m_width, m_height,
+					// Centered, 2x scale
+					(col * m_cellWidth) + (m_cellWidth / 2 - m_psf.getWidth()),
+					(row * m_cellHeight) + fret_height
+						+ (m_cellHeight / 2 - m_psf.getHeight()),
+					2);
+
+			// Render all
+			} else {
+
+				auto start_at_x = (col * m_cellWidth) + ((col < 5)
+					? cell_padding + m_psf.getWidth() + char_padding
+					: m_cellWidth - (4 * m_psf.getWidth())
+				);
+				auto y = (row * m_cellHeight) + fret_height
+						+ (m_cellHeight / 2) - (m_psf.getHeight() / 2);
+
+				m_psf.drawUtf16(utf16_1,
+					m_pix.get(), m_width, m_height,
+					start_at_x + (0 * m_psf.getWidth()),
+					y,
+					1);
+				m_psf.drawUtf16(utf16_2,
+					m_pix.get(), m_width, m_height,
+					start_at_x + (1 * m_psf.getWidth()),
+					y,
+					1);
+				m_psf.drawUtf16(utf16_3,
+					m_pix.get(), m_width, m_height,
+					start_at_x + (2 * m_psf.getWidth()),
+					y,
+					1);
+			}
+
+			return true;
+		}
+	);
+}
