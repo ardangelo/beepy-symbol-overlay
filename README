@@ -1,0 +1,19 @@
+Use Sharp DRM device overlay interface to display a keymap overlay
+
+```
+usage: symbol-overlay sharp_dev [--clear-all] [--meta] [--keymap=<path>] sharp_dev
+sharp_dev    Sharp device to command (e.g. /dev/dri/card0)
+--clear-all  Clear all overlays and exit
+--meta       Display Meta mode keymap instead of Symbol keymap
+--keymap     Path to X11 keymap to show for Symbol
+  (default /usr/share/kbd/keymaps/beepy-kbd.map)
+```
+
+
+## Regenerating X11 keymap
+
+```
+git clone git@github.com:xkbcommon/libxkbcommon.git
+g++ x11map.cpp -Ilibxkbcommon/include/ -Llibxkbcommon/build -lxkbcommon $(pkg-config --cflags --libs x11) -o x11map
+./x11map > src/x11name_to_utf16.cpp
+``
